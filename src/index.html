@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎙️ Minecraft Voice Chat</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #eee;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* Auth Screen */
+    #authScreen {
+      max-width: 400px;
+      margin: 100px auto;
+      background: #0f3460;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    #authScreen h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #e94560;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #ddd;
+      font-size: 14px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #16213e;
+      border-radius: 8px;
+      background: #1a1a2e;
+      color: #eee;
+      font-size: 16px;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #e94560;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      background: #e94560;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      background: #c13650;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
+    }
+
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .toggle-auth {
+      text-align: center;
+      margin-top: 20px;
+      color: #aaa;
+      font-size: 14px;
+    }
+
+    .toggle-auth a {
+      color: #e94560;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .error {
+      background: #c13650;
+      color: white;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .success {
+      background: #48bb78;
+      color: white;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    /* Main App */
+    #mainApp {
+      display: none;
+    }
+
+    .header {
+      background: #0f3460;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .header h1 {
+      color: #e94560;
+      font-size: 24px;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .status-badge {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .status-online {
+      background: #48bb78;
+      color: white;
+    }
+
+    .status-offline {
+      background: #c13650;
+      color: white;
+    }
+
+    .ping {
+      font-family: monospace;
+      color: #7cff7c;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      background: #16213e;
+      border: 2px solid #e94560;
+      color: #eee;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s;
+    }
+
+    .btn:hover {
+      background: #e94560;
+      color: white;
+    }
+
+    .btn-active {
+      background: #e94560;
+      color: white;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 1200px) {
+      .main-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: #0f3460;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .panel h3 {
+      color: #e94560;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #16213e;
+    }
+
+    th {
+      color: #e94560;
+      font-weight: 600;
+    }
+
+    .player-distance {
+      font-family: monospace;
+      color: #7cff7c;
+    }
+
+    .volume-indicator {
+      display: inline-block;
+      width: 40px;
+    }
+
+    .radio-channel {
+      background: #16213e;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border-left: 4px solid #e94560;
+    }
+
+    .radio-channel h4 {
+      color: #e94560;
+      margin-bottom: 8px;
+    }
+
+    .radio-member {
+      padding: 6px 12px;
+      background: #1a1a2e;
+      border-radius: 6px;
+      display: inline-block;
+      margin: 4px;
+      font-size: 13px;
+    }
+
+    .radio-input-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 15px;
+    }
+
+    .radio-input-group input {
+      flex: 1;
+    }
+
+    .radio-input-group button {
+      width: auto;
+      padding: 12px 20px;
+    }
+
+    .coord-display {
+      font-family: monospace;
+      font-size: 24px;
+      text-align: center;
+      padding: 20px;
+      background: #16213e;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .coord-label {
+      font-size: 12px;
+      color: #aaa;
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- Auth Screen -->
+  <div id="authScreen">
+    <h1>🎙️ Minecraft Voice Chat</h1>
+    
+    <div id="authError" class="error"></div>
+    <div id="authSuccess" class="success"></div>
+
+    <!-- Login Form -->
+    <div id="loginForm">
+      <div class="form-group">
+        <label>ユーザー名</label>
+        <input type="text" id="loginUsername" placeholder="username" />
+      </div>
+      <div class="form-group">
+        <label>パスワード</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" />
+      </div>
+      <button id="loginBtn">ログイン</button>
+      <div class="toggle-auth">
+        アカウントをお持ちでない方は <a id="showRegister">新規登録</a>
+      </div>
+    </div>
+
+    <!-- Register Form -->
+    <div id="registerForm" class="hidden">
+      <div class="form-group">
+        <label>XID（Minecraftサーバーで取得）</label>
+        <input type="text" id="registerXid" placeholder="-17179869183" />
+      </div>
+      <div class="form-group">
+        <label>ユーザー名</label>
+        <input type="text" id="registerUsername" placeholder="username" />
+      </div>
+      <div class="form-group">
+        <label>パスワード</label>
+        <input type="password" id="registerPassword" placeholder="••••••••" />
+      </div>
+      <button id="registerBtn">アカウント作成</button>
+      <div class="toggle-auth">
+        すでにアカウントをお持ちの方は <a id="showLogin">ログイン</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="mainApp" class="container">
+    <div class="header">
+      <div>
+        <h1>🎙️ Minecraft Voice Chat</h1>
+        <div class="user-info">
+          <span>ユーザー: <strong id="currentUsername"></strong></span>
+          <span class="status-badge status-online" id="wsStatus">WebSocket: 🟢 connected</span>
+          <span class="ping">Ping: <span id="pingDisplay">-</span>ms</span>
+        </div>
+      </div>
+      
+      <div class="controls">
+        <button class="btn" id="micToggle">🎤 マイク: OFF</button>
+        <button class="btn" id="reconnectBtn">再接続</button>
+        <button class="btn" id="logoutBtn">ログアウト</button>
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <!-- Spatial Audio Panel -->
+      <div class="panel">
+        <h3>🔊 空間音声</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>プレイヤー</th>
+              <th>距離</th>
+              <th>音量</th>
+            </tr>
+          </thead>
+          <tbody id="spatialPlayers"></tbody>
+        </table>
+      </div>
+
+      <!-- Radio Channels Panel -->
+      <div class="panel">
+        <h3>📻 ラジオチャンネル</h3>
+        
+        <div id="currentRadio" class="hidden">
+          <div class="radio-channel">
+            <h4>📻 <span id="currentRadioName"></span></h4>
+            <div id="currentRadioMembers"></div>
+            <button class="btn" id="leaveRadioBtn" style="width: 100%; margin-top: 10px;">退出</button>
+          </div>
+        </div>
+
+        <div id="noRadio">
+          <p style="color: #aaa; margin-bottom: 15px;">ラジオに参加していません</p>
+        </div>
+
+        <div class="radio-input-group">
+          <input type="text" id="radioChannelInput" placeholder="チャンネル名を入力" />
+          <button id="joinRadioBtn">参加</button>
+        </div>
+
+        <div id="allRadioChannels" style="margin-top: 20px;">
+          <h4 style="color: #e94560; margin-bottom: 10px;">アクティブなチャンネル</h4>
+          <div id="radioChannelsList"></div>
+        </div>
+      </div>
+
+      <!-- Position Panel -->
+      <div class="panel">
+        <h3>📍 座標情報</h3>
+        <div class="coord-display">
+          <span class="coord-label">X</span>
+          <div id="coordX">-</div>
+        </div>
+        <div class="coord-display">
+          <span class="coord-label">Y</span>
+          <div id="coordY">-</div>
+        </div>
+        <div class="coord-display">
+          <span class="coord-label">Z</span>
+          <div id="coordZ">-</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
