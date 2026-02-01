@@ -24,7 +24,7 @@ export default {
 }
 
 // Inline HTML (will be replaced during deployment)
-const HTML = \`__HTML_CONTENT__\`
+const HTML = "__HTML_CONTENT__"
 
 // Inline JS (will be replaced during deployment)
-const JS = \`__JS_CONTENT__\`
+const JS = "__JS_CONTENT__"
