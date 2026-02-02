@@ -1,6 +1,6 @@
 // Configuration
-const API_URL = 'https://mc-voice-relay.YOUR-ACCOUNT.workers.dev'
-const WS_URL = 'wss://mc-voice-relay.YOUR-ACCOUNT.workers.dev/ws'
+const API_URL = 'https://mc-voice-relay.nemu1.workers.dev'
+const WS_URL = 'wss://mc-voice-relay.nemu1.workers.dev/ws'
 
 // State
 let currentUser = null
