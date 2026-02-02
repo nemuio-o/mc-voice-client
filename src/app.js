@@ -1,18 +1,80 @@
 // Configuration
-const API_URL = 'https://mc-voice-relay.nemu1.workers.dev'
-const WS_URL = 'wss://mc-voice-relay.nemu1.workers.dev/ws'
+const API_URL = 'https://mc-voice-relay.YOUR-ACCOUNT.workers.dev'
+const WS_URL = 'wss://mc-voice-relay.YOUR-ACCOUNT.workers.dev/ws'
 
 // State
 let currentUser = null
 let authToken = null
 let ws = null
-let pingInterval = null
-let myPosition = { x: 0, y: 0, z: 0 }
-let players = new Map() // xid -> player data
 let radioChannel = null
 let micEnabled = false
+let pttActive = false
 let audioContext = null
-let gainNodes = new Map() // xid -> { gainNode, pannerNode }
+let localStream = null
+
+// Audio effects for radio
+let radioEffectNode = null
+let compressorNode = null
+
+// ============ AUDIO SETUP ============
+
+function initAudio() {
+  audioContext = new (window.AudioContext || window.webkitAudioContext)()
+  
+  // Create radio effect chain
+  compressorNode = audioContext.createDynamicsCompressor()
+  compressorNode.threshold.value = -50
+  compressorNode.knee.value = 40
+  compressorNode.ratio.value = 12
+  compressorNode.attack.value = 0
+  compressorNode.release.value = 0.25
+
+  // Bandpass filter for radio effect
+  const lowpass = audioContext.createBiquadFilter()
+  lowpass.type = 'lowpass'
+  lowpass.frequency.value = 3000 // Cut high frequencies
+
+  const highpass = audioContext.createBiquadFilter()
+  highpass.type = 'highpass'
+  highpass.frequency.value = 300 // Cut low frequencies
+
+  // Connect: compressor -> highpass -> lowpass
+  compressorNode.connect(highpass)
+  highpass.connect(lowpass)
+  
+  radioEffectNode = lowpass
+}
+
+// Radio beep sound (PTT on/off)
+function playBeep(frequency = 800, duration = 100) {
+  if (!audioContext) return
+  
+  const oscillator = audioContext.createOscillator()
+  const gainNode = audioContext.createGain()
+  
+  oscillator.type = 'sine'
+  oscillator.frequency.value = frequency
+  
+  gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000)
+  
+  oscillator.connect(gainNode)
+  gainNode.connect(audioContext.destination)
+  
+  oscillator.start(audioContext.currentTime)
+  oscillator.stop(audioContext.currentTime + duration / 1000)
+}
+
+// Double beep for PTT
+function playPTTBeep(on = true) {
+  if (on) {
+    playBeep(1000, 50)
+    setTimeout(() => playBeep(1200, 50), 60)
+  } else {
+    playBeep(1200, 50)
+    setTimeout(() => playBeep(1000, 50), 60)
+  }
+}
 
 // ============ AUTH ============
 
@@ -29,11 +91,10 @@ document.getElementById('showLogin').addEventListener('click', () => {
 })
 
 document.getElementById('registerBtn').addEventListener('click', async () => {
-  const xid = document.getElementById('registerXid').value.trim()
   const username = document.getElementById('registerUsername').value.trim()
   const password = document.getElementById('registerPassword').value
 
-  if (!xid || !username || !password) {
+  if (!username || !password) {
     showError('すべての項目を入力してください')
     return
   }
@@ -42,13 +103,13 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
     const response = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ xid, username, password })
+      body: JSON.stringify({ username, password })
     })
 
     const data = await response.json()
 
     if (data.success) {
-      showSuccess('アカウントが作成されました！ログインしてください')
+      showSuccess(data.message || 'アカウントが作成されました！ログインしてください')
       document.getElementById('showLogin').click()
       document.getElementById('loginUsername').value = username
     } else {
@@ -81,15 +142,12 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
       currentUser = { username: data.username, xid: data.xid }
       authToken = data.token
       
-      // Switch to main app
       document.getElementById('authScreen').style.display = 'none'
       document.getElementById('mainApp').style.display = 'block'
       document.getElementById('currentUsername').textContent = data.username
       
-      // Connect WebSocket
+      initAudio()
       connectWebSocket()
-      
-      // Check current radio channel
       checkRadioChannel()
     } else {
       showError(data.error || 'ログインに失敗しました')
@@ -101,6 +159,9 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
 
 document.getElementById('logoutBtn').addEventListener('click', async () => {
   if (ws) ws.close()
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop())
+  }
   
   try {
     await fetch(`${API_URL}/auth/logout`, {
@@ -137,109 +198,126 @@ function clearMessages() {
 
 // ============ WEBSOCKET ============
 
-let lastPingTime = 0
-
 function connectWebSocket() {
   const url = `${WS_URL}?xid=${encodeURIComponent(currentUser.xid)}`
   ws = new WebSocket(url)
   
   ws.onopen = () => {
-    updateWSStatus('connected')
-    startPing()
+    console.log('WebSocket connected')
   }
   
   ws.onclose = () => {
-    updateWSStatus('closed')
-    stopPing()
-  }
-  
-  ws.onerror = () => {
-    updateWSStatus('error')
+    console.log('WebSocket closed')
   }
   
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data)
       handleMessage(data)
-    } catch (e) {
-      console.error('Parse error:', e)
-    }
+    } catch (e) {}
   }
 }
 
 function handleMessage(data) {
-  // Pong
-  if (data.type === 'pong') {
-    const latency = Date.now() - lastPingTime
-    document.getElementById('pingDisplay').textContent = latency
+  if (data.type === 'radio_update') {
+    checkRadioChannel()
+  }
+}
+
+// ============ PTT RADIO ============
+
+const pttBtn = document.getElementById('pttBtn')
+const pttIcon = document.getElementById('pttIcon')
+
+// Mouse events
+pttBtn.addEventListener('mousedown', startPTT)
+pttBtn.addEventListener('mouseup', stopPTT)
+pttBtn.addEventListener('mouseleave', stopPTT)
+
+// Touch events for mobile
+pttBtn.addEventListener('touchstart', (e) => {
+  e.preventDefault()
+  startPTT()
+})
+pttBtn.addEventListener('touchend', (e) => {
+  e.preventDefault()
+  stopPTT()
+})
+
+// Keyboard support (Space key)
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !pttActive && radioChannel) {
+    e.preventDefault()
+    startPTT()
+  }
+})
+
+document.addEventListener('keyup', (e) => {
+  if (e.code === 'Space' && pttActive) {
+    e.preventDefault()
+    stopPTT()
+  }
+})
+
+async function startPTT() {
+  if (!radioChannel) {
+    alert('先にラジオチャンネルに参加してください')
     return
   }
-
-  // Position update
-  if (data.type === 'pos') {
-    players.set(data.xid, data)
-    
-    // Update my position
-    if (data.xid === currentUser.xid) {
-      myPosition = { x: data.x, y: data.y, z: data.z }
-      document.getElementById('coordX').textContent = data.x.toFixed(2)
-      document.getElementById('coordY').textContent = data.y.toFixed(2)
-      document.getElementById('coordZ').textContent = data.z.toFixed(2)
+  
+  if (pttActive) return
+  pttActive = true
+  
+  // Visual feedback
+  pttBtn.classList.add('ptt-active')
+  pttIcon.textContent = '📡'
+  
+  // Play beep
+  playPTTBeep(true)
+  
+  // Start microphone
+  if (!localStream) {
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      })
+      
+      // Apply radio effect
+      const source = audioContext.createMediaStreamSource(localStream)
+      source.connect(compressorNode)
+      radioEffectNode.connect(audioContext.destination)
+      
+      console.log('PTT: Microphone started with radio effect')
+    } catch (error) {
+      console.error('Microphone error:', error)
+      alert('マイクにアクセスできません')
+      stopPTT()
+      return
     }
-    
-    updateSpatialAudio()
-    renderPlayers()
   }
-
-  // Join
-  if (data.type === 'join') {
-    console.log('Player joined:', data.name)
-  }
-
-  // Quit
-  if (data.type === 'quit') {
-    players.delete(data.xid)
-    renderPlayers()
-  }
-
-  // Radio update
-  if (data.type === 'radio_update') {
-    updateRadioChannels()
-  }
+  
+  // TODO: Start WebRTC transmission
+  console.log('PTT: Transmitting...')
 }
 
-function updateWSStatus(status) {
-  const el = document.getElementById('wsStatus')
-  if (status === 'connected') {
-    el.textContent = 'WebSocket: 🟢 connected'
-    el.className = 'status-badge status-online'
-  } else {
-    el.textContent = `WebSocket: 🔴 ${status}`
-    el.className = 'status-badge status-offline'
-  }
+function stopPTT() {
+  if (!pttActive) return
+  pttActive = false
+  
+  // Visual feedback
+  pttBtn.classList.remove('ptt-active')
+  pttIcon.textContent = '📻'
+  
+  // Play beep
+  playPTTBeep(false)
+  
+  // TODO: Stop WebRTC transmission (keep stream alive for next PTT)
+  console.log('PTT: Stopped')
 }
-
-function startPing() {
-  stopPing()
-  pingInterval = setInterval(() => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      lastPingTime = Date.now()
-      ws.send(JSON.stringify({ type: 'ping' }))
-    }
-  }, 2000)
-}
-
-function stopPing() {
-  if (pingInterval) {
-    clearInterval(pingInterval)
-    pingInterval = null
-  }
-}
-
-document.getElementById('reconnectBtn').addEventListener('click', () => {
-  if (ws) ws.close()
-  connectWebSocket()
-})
 
 // ============ RADIO ============
 
@@ -262,7 +340,6 @@ document.getElementById('joinRadioBtn').addEventListener('click', async () => {
       radioChannel = channel
       updateRadioUI(channel, data.members)
       
-      // Notify other clients
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'radio_update' }))
       }
@@ -282,7 +359,6 @@ document.getElementById('leaveRadioBtn').addEventListener('click', async () => {
     radioChannel = null
     updateRadioUI(null, [])
     
-    // Notify other clients
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'radio_update' }))
     }
@@ -323,75 +399,6 @@ function updateRadioUI(channel, members) {
   }
 }
 
-async function updateRadioChannels() {
-  // In a real implementation, fetch all active channels
-  // For now, this is a placeholder
-}
-
-// ============ SPATIAL AUDIO ============
-
-function renderPlayers() {
-  const tbody = document.getElementById('spatialPlayers')
-  tbody.innerHTML = ''
-
-  for (const [xid, player] of players) {
-    if (xid === currentUser.xid) continue
-
-    const distance = calculateDistance(myPosition, player)
-    const volume = calculateVolume(xid, distance, player)
-    
-    const tr = document.createElement('tr')
-    tr.innerHTML = `
-      <td>${player.name || xid}</td>
-      <td class="player-distance">${distance.toFixed(1)}m</td>
-      <td class="volume-indicator">${getVolumeIcon(volume)}</td>
-    `
-    tbody.appendChild(tr)
-  }
-}
-
-function calculateDistance(pos1, pos2) {
-  const dx = pos1.x - pos2.x
-  const dy = pos1.y - pos2.y
-  const dz = pos1.z - pos2.z
-  return Math.sqrt(dx * dx + dy * dy + dz * dz)
-}
-
-function calculateVolume(xid, distance, player) {
-  // Radio takes priority
-  if (radioChannel && player.radioChannel === radioChannel) {
-    return 1.0
-  }
-
-  // Spatial audio
-  const maxDistance = 50
-  if (distance > maxDistance) return 0
-  if (distance < 5) return 1.0
-  
-  return Math.max(0.01, 1 / (distance / 5))
-}
-
-function getVolumeIcon(volume) {
-  if (volume === 0) return '🔇'
-  if (volume < 0.3) return '🔉'
-  if (volume < 0.7) return '🔊'
-  return '🔊🔊'
-}
-
-function updateSpatialAudio() {
-  // This would integrate with Web Audio API
-  // For each player, update their gain node based on distance
-  for (const [xid, player] of players) {
-    if (xid === currentUser.xid) continue
-    
-    const distance = calculateDistance(myPosition, player)
-    const volume = calculateVolume(xid, distance, player)
-    
-    // Update gain node (placeholder)
-    // gainNodes.get(xid)?.gainNode.gain.value = volume
-  }
-}
-
 // ============ MICROPHONE ============
 
 document.getElementById('micToggle').addEventListener('click', async () => {
@@ -401,15 +408,15 @@ document.getElementById('micToggle').addEventListener('click', async () => {
   if (micEnabled) {
     btn.textContent = '🎤 マイク: ON'
     btn.classList.add('btn-active')
-    // TODO: Enable microphone and WebRTC
   } else {
     btn.textContent = '🎤 マイク: OFF'
     btn.classList.remove('btn-active')
-    // TODO: Disable microphone
+    
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop())
+      localStream = null
+    }
   }
 })
 
-// ============ INIT ============
-
-console.log('🎙️ Minecraft Voice Chat Client loaded')
-console.log('API URL:', API_URL)
+console.log('🎙️ Minecraft Voice Chat Client loaded (PTT + Radio Effects)')
