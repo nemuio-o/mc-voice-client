@@ -1,5 +1,5 @@
 name = "mc-voice-client"
-main = "src/index.ts"
+main = "dist/index.ts"
 compatibility_date = "2026-01-24"
 
 [observability]
