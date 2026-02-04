@@ -2,22 +2,19 @@ export default {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
     
-    // Serve index.html
     if (url.pathname === '/' || url.pathname === '/index.html') {
       return new Response(HTML, {
         headers: { 'Content-Type': 'text/html; charset=UTF-8' }
       })
     }
     
-    // Serve app.js (main application)
-    if (url.pathname === '/app.js' || url.pathname === '/app-improved.js') {
-      return new Response(JS, {
+    if (url.pathname === '/app.js') {
+      return new Response(VOICE_JS, {
         headers: { 'Content-Type': 'application/javascript; charset=UTF-8' }
       })
     }
     
-    // Serve live.html (public channels view)
-    if (url.pathname === '/live' || url.pathname === '/live.html') {
+    if (url.pathname === '/live') {
       return new Response(LIVE_HTML, {
         headers: { 'Content-Type': 'text/html; charset=UTF-8' }
       })
@@ -27,8 +24,7 @@ export default {
   }
 }
 
-// HTML content will be replaced during build
-const HTML = `<!DOCTYPE html>
+const HTML = \`<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
