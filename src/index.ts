@@ -454,6 +454,7 @@ let radioChannel = null;
 let pttActive = false;
 let audioContext = null;
 let localStream = null;
+let micPermissionGranted = false; // 🔧 追加：マイク許可状態を追跡
 let peerConnection = null;
 let remoteStreams = new Map();
 let gainNodes = new Map();
@@ -474,7 +475,6 @@ let lastPingTime = 0;
 function initAudio() {
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
   
-  // Compressor for radio effect
   compressorNode = audioContext.createDynamicsCompressor();
   compressorNode.threshold.value = -50;
   compressorNode.knee.value = 40;
@@ -482,7 +482,6 @@ function initAudio() {
   compressorNode.attack.value = 0;
   compressorNode.release.value = 0.25;
 
-  // Bandpass filter for radio effect
   const lowpass = audioContext.createBiquadFilter();
   lowpass.type = 'lowpass';
   lowpass.frequency.value = 3000;
@@ -491,11 +490,9 @@ function initAudio() {
   highpass.type = 'highpass';
   highpass.frequency.value = 300;
 
-  // Analyser for volume meter
   analyserNode = audioContext.createAnalyser();
   analyserNode.fftSize = 256;
 
-  // Connect: compressor -> highpass -> lowpass -> analyser
   compressorNode.connect(highpass);
   highpass.connect(lowpass);
   lowpass.connect(analyserNode);
@@ -692,6 +689,12 @@ function updateListenerPosition(x, y, z) {
 // ============ MICROPHONE ============
 
 async function getMicrophone() {
+  // 🔧 既に許可済みの場合はスキップ
+  if (micPermissionGranted && localStream) {
+    console.log('🎤 Microphone already granted');
+    return true;
+  }
+
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -702,10 +705,12 @@ async function getMicrophone() {
       }
     });
     
+    micPermissionGranted = true; // 🔧 許可状態を記録
     console.log('🎤 Microphone access granted');
     return true;
   } catch (error) {
     console.error('❌ Microphone error:', error);
+    micPermissionGranted = false; // 🔧 失敗を記録
     
     if (error.name === 'NotAllowedError') {
       alert('マイクの使用が拒否されました。ブラウザの設定でマイクへのアクセスを許可してください。');
@@ -728,6 +733,17 @@ async function startPTT() {
   }
   
   if (pttActive) return;
+  
+  // 🔧 マイク許可を最初に確認
+  if (!micPermissionGranted || !localStream) {
+    console.log('🎤 Requesting microphone access...');
+    const success = await getMicrophone();
+    if (!success) {
+      console.error('❌ Cannot start PTT without microphone');
+      return;
+    }
+  }
+  
   pttActive = true;
   
   const pttBtn = document.getElementById('pttBtn');
@@ -737,24 +753,23 @@ async function startPTT() {
   
   playPTTBeep(true);
   
-  if (!localStream) {
-    const success = await getMicrophone();
-    if (!success) {
-      stopPTT();
-      return;
-    }
+  // 🔧 localStreamが存在することを確認してから使用
+  if (!localStream || localStream.getTracks().length === 0) {
+    console.error('❌ localStream is invalid');
+    stopPTT();
+    return;
   }
   
-  const source = audioContext.createMediaStreamSource(localStream);
-  source.connect(compressorNode);
-  radioEffectNode.connect(analyserNode);
-  
-  if (peerConnection) {
-    localStream.getTracks().forEach(track => {
-      peerConnection.addTrack(track, localStream);
-    });
+  try {
+    const source = audioContext.createMediaStreamSource(localStream);
+    source.connect(compressorNode);
+    radioEffectNode.connect(analyserNode);
     
-    try {
+    if (peerConnection) {
+      localStream.getTracks().forEach(track => {
+        peerConnection.addTrack(track, localStream);
+      });
+      
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
       
@@ -772,14 +787,15 @@ async function startPTT() {
         await peerConnection.setRemoteDescription(data.answer);
         console.log('✅ PTT: Connected');
       }
-    } catch (error) {
-      console.error('❌ PTT: Connection failed:', error);
     }
+    
+    startVolumeMeter();
+    
+    console.log('🎙️ PTT: Transmitting...');
+  } catch (error) {
+    console.error('❌ PTT start error:', error);
+    stopPTT();
   }
-  
-  startVolumeMeter();
-  
-  console.log('🎙️ PTT: Transmitting...');
 }
 
 function stopPTT() {
@@ -988,7 +1004,11 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
 
 document.getElementById('logoutBtn').addEventListener('click', async () => {
   if (ws) ws.close();
-  if (localStream) localStream.getTracks().forEach(track => track.stop());
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+    micPermissionGranted = false; // 🔧 許可状態をリセット
+  }
   
   try {
     await fetch(API_URL + '/auth/logout', {
@@ -1303,7 +1323,6 @@ const LIVE_HTML = `<!DOCTYPE html>
       document.getElementById('lastUpdate').textContent = timeStr;
     }
     
-    // Initialize
     connect();
     setInterval(fetchChannels, 30000);
   </script>
