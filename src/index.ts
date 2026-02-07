@@ -24,7 +24,7 @@ export default {
   }
 }
 
-const HTML = \`<!DOCTYPE html>
+const HTML = `<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
@@ -177,9 +177,9 @@ const HTML = \`<!DOCTYPE html>
   
   <script src="/app.js"></script>
 </body>
-</html>\`
+</html>`
 
-const VOICE_JS = \`
+const VOICE_JS = `
 const API_URL='https://mc-voice-relay.nemu1.workers.dev';
 const WS_URL='wss://mc-voice-relay.nemu1.workers.dev/ws';
 let currentUser=null,authToken=null,ws=null,radioChannel=null,micEnabled=false,pttActive=false,audioContext=null,localStream=null,peerConnection=null;
@@ -588,9 +588,9 @@ document.getElementById('minDistanceSlider').addEventListener('input',e=>{
 });
 
 console.log('🎙️ Complete Voice Chat System loaded');
-\`
+`
 
-const LIVE_HTML=\`<!DOCTYPE html>
+const LIVE_HTML=`<!DOCTYPE html>
 <html lang="ja">
 <head><meta charset="UTF-8"><title>📻 Live</title>
 <style>
@@ -623,4 +623,4 @@ async function load(){
 load();setInterval(load,30000);
 </script>
 </body>
-</html>\`
+</html>`
