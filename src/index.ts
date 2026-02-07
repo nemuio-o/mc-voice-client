@@ -10,7 +10,7 @@ export default {
     
     if (url.pathname === '/app.js') {
       return new Response(VOICE_JS, {
-        headers: { 'Content-Type': 'text/html; charset=UTF-8' }
+        headers: { 'Content-Type': 'application/javascript; charset=UTF-8' }
       })
     }
     
@@ -50,18 +50,22 @@ const HTML = `<!DOCTYPE html>
     .status-bar{display:flex;gap:15px;flex-wrap:wrap;margin-top:10px}
     .status-item{padding:6px 12px;background:rgba(255,255,255,0.1);border-radius:12px;font-size:13px}
     .status-online{color:#48bb78}
-    .controls{display:flex;gap:12px;margin-top:15px;align-items:center}
+    .status-error{color:#ff7c7c}
+    .controls{display:flex;gap:12px;margin-top:15px;align-items:center;flex-wrap:wrap}
     .btn{padding:10px 20px;background:#16213e;border:2px solid #e94560;color:#eee;border-radius:8px;cursor:pointer;font-size:14px;transition:all 0.3s;white-space:nowrap}
     .btn:hover{background:#e94560;color:white}
     .btn-active{background:#e94560;color:white}
+    .btn:disabled{opacity:0.5;cursor:not-allowed}
     .ptt-btn{width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,#e94560 0%,#c13650 100%);border:4px solid #0f3460;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:2em;transition:all 0.2s;box-shadow:0 4px 16px rgba(233,69,96,0.4);user-select:none;margin:20px auto}
     .ptt-btn:hover{transform:scale(1.05)}
     .ptt-btn:active{transform:scale(0.95)}
+    .ptt-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
     .ptt-active{animation:pttPulse 1s infinite;background:linear-gradient(135deg,#48bb78 0%,#38a169 100%);border-color:#48bb78}
     @keyframes pttPulse{0%,100%{box-shadow:0 0 0 0 rgba(72,187,120,0.7)}50%{box-shadow:0 0 0 20px rgba(72,187,120,0)}}
     .panel{background:#0f3460;padding:20px;border-radius:12px;margin-bottom:20px}
     .panel h3{color:#e94560;margin-bottom:15px}
     .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+    @media(max-width:768px){.grid-2{grid-template-columns:1fr}}
     .player-item{background:#16213e;padding:12px;border-radius:8px;margin-bottom:8px;border-left:4px solid #48bb78}
     .player-name{font-weight:600;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
     .player-distance{font-size:12px;color:#aaa}
@@ -76,6 +80,7 @@ const HTML = `<!DOCTYPE html>
     .range-container{display:flex;align-items:center;gap:12px}
     .range-container input[type="range"]{flex:1}
     .range-value{min-width:60px;text-align:right;color:#48bb78;font-weight:600}
+    .warning-box{background:#ff9800;color:#000;padding:15px;border-radius:8px;margin-bottom:20px}
   </style>
 </head>
 <body>
@@ -123,7 +128,7 @@ const HTML = `<!DOCTYPE html>
       <div class="status-bar">
         <span class="status-item">WebSocket: <span id="wsStatus">-</span></span>
         <span class="status-item">Ping: <span id="pingDisplay">-</span></span>
-        <span class="status-item">WebRTC: <span id="rtcStatus">-</span></span>
+        <span class="status-item">マイク: <span id="micStatus">-</span></span>
       </div>
       <div class="controls">
         <button class="btn" id="micToggle">🎤 マイク: OFF</button>
@@ -131,21 +136,30 @@ const HTML = `<!DOCTYPE html>
       </div>
     </div>
     
+    <div id="micWarning" class="warning-box hidden">
+      ⚠️ マイクへのアクセスが拒否されました。<br>
+      <strong>対処法:</strong><br>
+      1. ブラウザのアドレスバー左のアイコンをクリック<br>
+      2. 「マイク」の権限を「許可」に変更<br>
+      3. ページをリロード
+    </div>
+    
     <div class="grid-2">
       <div>
         <div class="panel">
           <h3>📻 ラジオPTT</h3>
-          <button class="ptt-btn" id="pttBtn">
+          <button class="ptt-btn" id="pttBtn" disabled>
             <span id="pttIcon">📻</span>
           </button>
           <p style="text-align:center;color:#aaa;margin-top:10px">押している間だけ送信</p>
+          <p id="pttInfo" style="text-align:center;color:#ff7c7c;margin-top:5px;font-size:12px">マイクをONにしてください</p>
           <div class="radio-input-group">
             <input type="text" id="radioChannelInput" placeholder="チャンネル名" />
             <button id="joinRadioBtn">参加</button>
           </div>
           <div id="currentRadio" class="hidden" style="margin-top:15px;padding:15px;background:#16213e;border-radius:8px;border-left:4px solid #e94560">
             <div style="margin-bottom:10px">チャンネル: <strong id="currentRadioName"></strong></div>
-            <button class="btn" id="leaveRadioBtn">退出</button>
+            <button class="btn" id="leaveRadioBtn" style="width:100%">退出</button>
           </div>
         </div>
         
@@ -180,35 +194,42 @@ const HTML = `<!DOCTYPE html>
 </html>`
 
 const VOICE_JS = `
+console.log('🎙️ Loading Complete Voice Chat System...');
 const API_URL='https://mc-voice-relay.nemu1.workers.dev';
 const WS_URL='wss://mc-voice-relay.nemu1.workers.dev/ws';
-let currentUser=null,authToken=null,ws=null,radioChannel=null,micEnabled=false,pttActive=false,audioContext=null,localStream=null,peerConnection=null;
+let currentUser=null,authToken=null,ws=null,radioChannel=null,micEnabled=false,pttActive=false,audioContext=null,localStream=null;
 let playerPositions=new Map(),myPosition={x:0,y:0,z:0},gainNodes=new Map(),analyserNodes=new Map();
 let compressorNode=null,radioEffectNode=null,analyserNode=null;
 let pingInterval=null,lastPingTime=0;
 let maxDistance=50,minDistance=5;
-let micStatusMap=new Map(); // xid -> micOn
+let micStatusMap=new Map();
 
 function initAudio(){
-  audioContext=new(window.AudioContext||window.webkitAudioContext)();
-  compressorNode=audioContext.createDynamicsCompressor();
-  compressorNode.threshold.value=-50;compressorNode.knee.value=40;compressorNode.ratio.value=12;
-  const lowpass=audioContext.createBiquadFilter();lowpass.type='lowpass';lowpass.frequency.value=3000;
-  const highpass=audioContext.createBiquadFilter();highpass.type='highpass';highpass.frequency.value=300;
-  analyserNode=audioContext.createAnalyser();analyserNode.fftSize=256;
-  compressorNode.connect(highpass);highpass.connect(lowpass);lowpass.connect(analyserNode);
-  radioEffectNode=analyserNode;
-  console.log('🎵 Audio initialized');
+  try{
+    audioContext=new(window.AudioContext||window.webkitAudioContext)();
+    compressorNode=audioContext.createDynamicsCompressor();
+    compressorNode.threshold.value=-50;compressorNode.knee.value=40;compressorNode.ratio.value=12;
+    const lowpass=audioContext.createBiquadFilter();lowpass.type='lowpass';lowpass.frequency.value=3000;
+    const highpass=audioContext.createBiquadFilter();highpass.type='highpass';highpass.frequency.value=300;
+    analyserNode=audioContext.createAnalyser();analyserNode.fftSize=256;
+    compressorNode.connect(highpass);highpass.connect(lowpass);lowpass.connect(analyserNode);
+    radioEffectNode=analyserNode;
+    console.log('🎵 Audio initialized');
+  }catch(err){
+    console.error('❌ Audio init error:',err);
+  }
 }
 
 function playBeep(freq=800,dur=100){
   if(!audioContext)return;
-  const osc=audioContext.createOscillator(),gain=audioContext.createGain();
-  osc.type='sine';osc.frequency.value=freq;
-  gain.gain.setValueAtTime(0.3,audioContext.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.01,audioContext.currentTime+dur/1000);
-  osc.connect(gain);gain.connect(audioContext.destination);
-  osc.start(audioContext.currentTime);osc.stop(audioContext.currentTime+dur/1000);
+  try{
+    const osc=audioContext.createOscillator(),gain=audioContext.createGain();
+    osc.type='sine';osc.frequency.value=freq;
+    gain.gain.setValueAtTime(0.3,audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01,audioContext.currentTime+dur/1000);
+    osc.connect(gain);gain.connect(audioContext.destination);
+    osc.start(audioContext.currentTime);osc.stop(audioContext.currentTime+dur/1000);
+  }catch(err){}
 }
 
 function playPTTBeep(on){
@@ -216,39 +237,23 @@ function playPTTBeep(on){
   else{playBeep(1200,50);setTimeout(()=>playBeep(1000,50),60)}
 }
 
-async function setupWebRTC(){
-  try{
-    const res=await fetch(API_URL+'/voice/token',{headers:{'Authorization':'Bearer '+authToken}});
-    const data=await res.json();
-    if(!data.success)throw new Error('Token failed');
-    peerConnection=new RTCPeerConnection({iceServers:data.iceServers});
-    peerConnection.onicecandidate=e=>{if(e.candidate)console.log('🧊 ICE:',e.candidate)};
-    peerConnection.onconnectionstatechange=()=>{
-      console.log('📡 State:',peerConnection.connectionState);
-      updateRTCStatus(peerConnection.connectionState);
-    };
-    peerConnection.ontrack=e=>{
-      console.log('🎵 Track:',e.track.id);
-      const[stream]=e.streams;
-      setupSpatialAudio(e.track.id,stream);
-    };
-    console.log('✅ WebRTC ready');
-    return true;
-  }catch(err){console.error('❌ WebRTC:',err);return false}
-}
-
 function setupSpatialAudio(xid,stream){
-  const source=audioContext.createMediaStreamSource(stream);
-  const gainNode=audioContext.createGain();
-  const pannerNode=audioContext.createPanner();
-  const analyser=audioContext.createAnalyser();
-  analyser.fftSize=256;
-  pannerNode.panningModel='HRTF';pannerNode.distanceModel='inverse';
-  pannerNode.refDistance=minDistance;pannerNode.maxDistance=maxDistance;pannerNode.rolloffFactor=1;
-  source.connect(gainNode);gainNode.connect(pannerNode);pannerNode.connect(analyser);analyser.connect(audioContext.destination);
-  gainNodes.set(xid,{gainNode,pannerNode});
-  analyserNodes.set(xid,analyser);
-  console.log(\`🔊 Spatial audio: \${xid}\`);
+  if(!audioContext)return;
+  try{
+    const source=audioContext.createMediaStreamSource(stream);
+    const gainNode=audioContext.createGain();
+    const pannerNode=audioContext.createPanner();
+    const analyser=audioContext.createAnalyser();
+    analyser.fftSize=256;
+    pannerNode.panningModel='HRTF';pannerNode.distanceModel='inverse';
+    pannerNode.refDistance=minDistance;pannerNode.maxDistance=maxDistance;pannerNode.rolloffFactor=1;
+    source.connect(gainNode);gainNode.connect(pannerNode);pannerNode.connect(analyser);analyser.connect(audioContext.destination);
+    gainNodes.set(xid,{gainNode,pannerNode});
+    analyserNodes.set(xid,analyser);
+    console.log(\`🔊 Spatial audio: \${xid}\`);
+  }catch(err){
+    console.error('Spatial audio error:',err);
+  }
 }
 
 function updateSpatialAudio(){
@@ -287,17 +292,19 @@ function updateNearbyPlayers(){
   }
   nearby.sort((a,b)=>a.dist-b.dist);
   if(!nearby.length){
-    container.innerHTML='<p style="color:#aaa;text-align:center">範囲内にマイクONのプレイヤーはいません</p>';
+    container.innerHTML='<p style="color:#aaa;text-align:center;padding:20px">範囲内にマイクONのプレイヤーはいません</p>';
     return;
   }
   container.innerHTML=nearby.map(p=>{
     const analyser=analyserNodes.get(p.xid);
     let realVol=0;
     if(analyser){
-      const dataArray=new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteFrequencyData(dataArray);
-      const avg=dataArray.reduce((a,b)=>a+b)/dataArray.length;
-      realVol=Math.min(1,(avg/255)*p.vol);
+      try{
+        const dataArray=new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(dataArray);
+        const avg=dataArray.reduce((a,b)=>a+b)/dataArray.length;
+        realVol=Math.min(1,(avg/255)*p.vol);
+      }catch(err){}
     }
     return \`
       <div class="player-item">
@@ -314,17 +321,39 @@ function updateNearbyPlayers(){
 }
 
 async function getMicrophone(){
+  console.log('🎤 Requesting microphone...');
+  const micStatus=document.getElementById('micStatus');
   try{
     localStream=await navigator.mediaDevices.getUserMedia({
-      audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,sampleRate:48000}
+      audio:{
+        echoCancellation:true,
+        noiseSuppression:true,
+        autoGainControl:true,
+        sampleRate:48000
+      }
     });
-    console.log('🎤 Mic granted');
+    console.log('✅ Mic granted');
+    if(micStatus)micStatus.textContent='✅ 許可済み';
+    document.getElementById('micWarning').classList.add('hidden');
     return true;
   }catch(err){
-    console.error('❌ Mic:',err);
-    if(err.name==='NotAllowedError')alert('マイクの使用が拒否されました。ブラウザの設定で許可してください。\\n\\nChrome: アドレスバー左のアイコン → マイク → 許可');
-    else if(err.name==='NotFoundError')alert('マイクが見つかりません。マイクが接続されているか確認してください。');
-    else alert('マイクエラー: '+err.message);
+    console.error('❌ Mic error:',err.name,err.message);
+    if(micStatus)micStatus.textContent='❌ '+err.name;
+    document.getElementById('micWarning').classList.remove('hidden');
+    let msg='マイクにアクセスできません\\n\\n';
+    if(err.name==='NotAllowedError'){
+      msg+='ブラウザ設定で許可してください:\\n';
+      msg+='1. アドレスバー左のアイコンをクリック\\n';
+      msg+='2. マイク → 許可\\n';
+      msg+='3. ページをリロード';
+    }else if(err.name==='NotFoundError'){
+      msg+='マイクが見つかりません。\\nマイクが接続されているか確認してください。';
+    }else if(err.name==='NotReadableError'){
+      msg+='マイクが他のアプリで使用中です。\\n他のアプリを終了してください。';
+    }else{
+      msg+='エラー: '+err.message;
+    }
+    alert(msg);
     return false;
   }
 }
@@ -332,22 +361,30 @@ async function getMicrophone(){
 async function toggleMic(){
   micEnabled=!micEnabled;
   const btn=document.getElementById('micToggle');
+  const pttBtn=document.getElementById('pttBtn');
+  const pttInfo=document.getElementById('pttInfo');
   if(micEnabled){
-    if(!localStream){
-      const success=await getMicrophone();
-      if(!success){
-        micEnabled=false;
-        return;
-      }
+    const success=await getMicrophone();
+    if(!success){
+      micEnabled=false;
+      return;
     }
     btn.textContent='🎤 マイク: ON';
     btn.classList.add('btn-active');
+    if(pttBtn)pttBtn.disabled=false;
+    if(pttInfo)pttInfo.style.display='none';
     micStatusMap.set(currentUser.xid,true);
     broadcastMicStatus(true);
   }else{
     btn.textContent='🎤 マイク: OFF';
     btn.classList.remove('btn-active');
+    if(pttBtn)pttBtn.disabled=true;
+    if(pttInfo){pttInfo.style.display='block';pttInfo.textContent='マイクをONにしてください'}
     if(pttActive)stopPTT();
+    if(localStream){
+      localStream.getTracks().forEach(track=>track.stop());
+      localStream=null;
+    }
     micStatusMap.set(currentUser.xid,false);
     broadcastMicStatus(false);
   }
@@ -360,27 +397,29 @@ function broadcastMicStatus(status){
 }
 
 async function startPTT(){
-  if(!micEnabled){alert('先にマイクをONにしてください');return}
-  if(!radioChannel){alert('先にラジオチャンネルに参加してください');return}
+  if(!micEnabled){
+    alert('先にマイクをONにしてください');
+    return;
+  }
+  if(!radioChannel){
+    alert('先にラジオチャンネルに参加してください');
+    return;
+  }
   if(pttActive)return;
   pttActive=true;
   document.getElementById('pttBtn').classList.add('ptt-active');
   document.getElementById('pttIcon').textContent='📡';
+  const pttInfo=document.getElementById('pttInfo');
+  if(pttInfo){pttInfo.style.display='block';pttInfo.textContent='送信中...';pttInfo.style.color='#48bb78'}
   playPTTBeep(true);
-  const source=audioContext.createMediaStreamSource(localStream);
-  source.connect(compressorNode);radioEffectNode.connect(audioContext.destination);
-  if(peerConnection){
-    localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));
+  if(audioContext&&localStream){
     try{
-      const offer=await peerConnection.createOffer();
-      await peerConnection.setLocalDescription(offer);
-      const res=await fetch(API_URL+'/voice/sdp',{
-        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},
-        body:JSON.stringify({offer})
-      });
-      const data=await res.json();
-      if(data.success)await peerConnection.setRemoteDescription(data.answer);
-    }catch(err){console.error('❌ PTT:',err)}
+      const source=audioContext.createMediaStreamSource(localStream);
+      source.connect(compressorNode);
+      radioEffectNode.connect(audioContext.destination);
+    }catch(err){
+      console.error('PTT audio error:',err);
+    }
   }
   console.log('🎙️ PTT: Transmitting');
 }
@@ -390,17 +429,29 @@ function stopPTT(){
   pttActive=false;
   document.getElementById('pttBtn').classList.remove('ptt-active');
   document.getElementById('pttIcon').textContent='📻';
+  const pttInfo=document.getElementById('pttInfo');
+  if(pttInfo){pttInfo.style.display='none'}
   playPTTBeep(false);
-  if(peerConnection&&localStream){
-    peerConnection.getSenders().forEach(s=>{if(s.track)peerConnection.removeTrack(s)});
-  }
   console.log('🎙️ PTT: Stopped');
 }
 
 function connectWebSocket(){
+  console.log('🌐 Connecting WebSocket...');
   ws=new WebSocket(WS_URL+'?xid='+encodeURIComponent(currentUser.xid));
-  ws.onopen=()=>{console.log('🌐 WS connected');updateWSStatus('connected');startPing()};
-  ws.onclose=()=>{console.log('🌐 WS closed');updateWSStatus('closed');stopPing();setTimeout(connectWebSocket,5000)};
+  ws.onopen=()=>{
+    console.log('✅ WS connected');
+    updateWSStatus('connected');
+    startPing();
+  };
+  ws.onclose=()=>{
+    console.log('🔴 WS closed');
+    updateWSStatus('closed');
+    stopPing();
+    setTimeout(connectWebSocket,5000);
+  };
+  ws.onerror=err=>{
+    console.error('❌ WS error:',err);
+  };
   ws.onmessage=e=>{
     try{
       const data=JSON.parse(e.data);
@@ -418,19 +469,25 @@ function connectWebSocket(){
           }
         }
         updateSpatialAudio();
-      }else if(data.type==='radio_update')checkRadioChannel();
-      else if(data.type==='mic_status'){
+      }else if(data.type==='radio_update'){
+        checkRadioChannel();
+      }else if(data.type==='mic_status'){
         micStatusMap.set(data.xid,data.micOn);
         updateNearbyPlayers();
       }
-    }catch(err){}
+    }catch(err){
+      console.error('WS message error:',err);
+    }
   };
 }
 
 function startPing(){
   stopPing();
   pingInterval=setInterval(()=>{
-    if(ws&&ws.readyState===WebSocket.OPEN){lastPingTime=Date.now();ws.send(JSON.stringify({type:'ping'}))}
+    if(ws&&ws.readyState===WebSocket.OPEN){
+      lastPingTime=Date.now();
+      ws.send(JSON.stringify({type:'ping'}));
+    }
   },2000);
 }
 
@@ -441,15 +498,8 @@ function stopPing(){
 
 function updateWSStatus(s){
   const el=document.getElementById('wsStatus');
-  if(s==='connected'){el.textContent='🟢 接続中';el.className='status-online'}
-  else{el.textContent='🔴 '+s;el.className=''}
-}
-
-function updateRTCStatus(s){
-  const el=document.getElementById('rtcStatus');
-  if(!el)return;
-  const map={connected:'🟢 接続',connecting:'🟡 接続中',disconnected:'🔴 切断',failed:'❌ 失敗'};
-  el.textContent=map[s]||s;
+  if(s==='connected'){el.textContent='🟢 接続中';el.className='status-item status-online'}
+  else{el.textContent='🔴 '+s;el.className='status-item status-error'}
 }
 
 document.getElementById('showRegister').addEventListener('click',()=>{
@@ -474,13 +524,16 @@ document.getElementById('registerBtn').addEventListener('click',async()=>{
     if(data.success){
       document.getElementById('authSuccess').textContent=data.message||'アカウント作成成功';
       document.getElementById('authSuccess').style.display='block';
-      document.getElementById('showLogin').click();
+      setTimeout(()=>document.getElementById('showLogin').click(),1500);
       document.getElementById('loginUsername').value=username;
     }else{
       document.getElementById('authError').textContent=data.error;
       document.getElementById('authError').style.display='block';
     }
-  }catch(err){alert('サーバー接続エラー')}
+  }catch(err){
+    console.error('Register error:',err);
+    alert('サーバー接続エラー');
+  }
 });
 
 document.getElementById('loginBtn').addEventListener('click',async()=>{
@@ -499,15 +552,18 @@ document.getElementById('loginBtn').addEventListener('click',async()=>{
       document.getElementById('mainApp').style.display='block';
       document.getElementById('currentUsername').textContent=data.username;
       initAudio();
-      await setupWebRTC();
       connectWebSocket();
       checkRadioChannel();
       setInterval(updateNearbyPlayers,100);
+      console.log('✅ Login successful');
     }else{
       document.getElementById('authError').textContent=data.error;
       document.getElementById('authError').style.display='block';
     }
-  }catch(err){alert('サーバー接続エラー')}
+  }catch(err){
+    console.error('Login error:',err);
+    alert('サーバー接続エラー');
+  }
 });
 
 document.getElementById('micToggle').addEventListener('click',toggleMic);
@@ -541,7 +597,10 @@ document.getElementById('joinRadioBtn').addEventListener('click',async()=>{
     if(data.success){
       radioChannel=channel;
       updateRadioUI(channel);
+      const pttInfo=document.getElementById('pttInfo');
+      if(pttInfo&&micEnabled){pttInfo.style.display='none'}
       if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'radio_update'}));
+      console.log('✅ Joined radio:',channel);
     }
   }catch(err){console.error('Radio join:',err)}
 });
@@ -551,6 +610,8 @@ document.getElementById('leaveRadioBtn').addEventListener('click',async()=>{
     await fetch(API_URL+'/radio/leave',{method:'POST',headers:{'Authorization':'Bearer '+authToken}});
     radioChannel=null;
     updateRadioUI(null);
+    const pttInfo=document.getElementById('pttInfo');
+    if(pttInfo&&micEnabled){pttInfo.style.display='block';pttInfo.textContent='ラジオチャンネルに参加してください';pttInfo.style.color='#ff7c7c'}
     if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'radio_update'}));
   }catch(err){console.error('Radio leave:',err)}
 });
@@ -587,7 +648,7 @@ document.getElementById('minDistanceSlider').addEventListener('input',e=>{
   updateSpatialAudio();
 });
 
-console.log('🎙️ Complete Voice Chat System loaded');
+console.log('✅ Complete Voice Chat System loaded');
 `
 
 const LIVE_HTML=`<!DOCTYPE html>
