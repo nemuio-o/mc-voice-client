@@ -18,7 +18,7 @@ export default {
   }
 }
 
-const HTML = \`<!DOCTYPE html>
+const HTML = `<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
@@ -878,9 +878,9 @@ const HTML = \`<!DOCTYPE html>
   
   <script src="/app.js"></script>
 </body>
-</html>\`
+</html>`
 
-const VOICE_JS = \`
+const VOICE_JS = `
 console.log('🎙️ Voice Chat System - Final Production Version');
 const API_URL='https://mc-voice-relay.nemu1.workers.dev';
 const WS_URL='wss://mc-voice-relay.nemu1.workers.dev/ws';
@@ -1425,4 +1425,4 @@ document.getElementById('logoutBtn').addEventListener('click',()=>{
 });
 
 console.log('✅ Voice Chat System Ready');
-\`
+`
