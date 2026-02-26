@@ -18,34 +18,16 @@ export default {
   }
 }
 
-const HTML = `<!DOCTYPE html>
+const HTML = \`<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>🎙️ Voice Chat</title>
+  <title>Voice Chat</title>
   <style>
     :root {
-      --bg-primary: #000000;
-      --bg-secondary: #1c1c1e;
-      --bg-tertiary: #2c2c2e;
-      --bg-elevated: #3a3a3c;
-      --text-primary: #ffffff;
-      --text-secondary: #ebebf5;
-      --text-tertiary: #ebebf599;
-      --accent: #0a84ff;
-      --accent-hover: #409cff;
-      --destructive: #ff453a;
-      --success: #32d74b;
-      --warning: #ffd60a;
-      --separator: #38383a;
-      --radio-accent: #ff9f0a;
-      --spatial-accent: #64d2ff;
-    }
-    
-    .light-mode {
       --bg-primary: #ffffff;
       --bg-secondary: #f2f2f7;
       --bg-tertiary: #ffffff;
@@ -63,6 +45,24 @@ const HTML = `<!DOCTYPE html>
       --spatial-accent: #00c7be;
     }
     
+    .dark-mode {
+      --bg-primary: #000000;
+      --bg-secondary: #1c1c1e;
+      --bg-tertiary: #2c2c2e;
+      --bg-elevated: #3a3a3c;
+      --text-primary: #ffffff;
+      --text-secondary: #ebebf5;
+      --text-tertiary: #ebebf599;
+      --accent: #0a84ff;
+      --accent-hover: #409cff;
+      --destructive: #ff453a;
+      --success: #32d74b;
+      --warning: #ffd60a;
+      --separator: #38383a;
+      --radio-accent: #ff9f0a;
+      --spatial-accent: #64d2ff;
+    }
+    
     * {
       margin: 0;
       padding: 0;
@@ -78,6 +78,22 @@ const HTML = `<!DOCTYPE html>
       transition: background-color 0.3s, color 0.3s;
     }
     
+    .icon {
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
+    }
+    
+    .icon-small {
+      width: 20px;
+      height: 20px;
+    }
+    
+    .icon-large {
+      width: 48px;
+      height: 48px;
+    }
+    
     /* Auth Screen */
     #authScreen {
       min-height: 100vh;
@@ -85,6 +101,27 @@ const HTML = `<!DOCTYPE html>
       align-items: center;
       justify-content: center;
       padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      position: relative;
+    }
+    
+    .auth-theme-toggle {
+      position: absolute;
+      top: calc(20px + env(safe-area-inset-top));
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--separator);
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    
+    .auth-theme-toggle:active {
+      transform: scale(0.9);
     }
     
     .auth-container {
@@ -95,7 +132,6 @@ const HTML = `<!DOCTYPE html>
     
     .auth-logo {
       text-align: center;
-      font-size: 4rem;
       margin-bottom: 20px;
     }
     
@@ -145,6 +181,36 @@ const HTML = `<!DOCTYPE html>
       background: var(--bg-tertiary);
     }
     
+    .form-checkbox {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px;
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+    
+    .form-checkbox input[type="checkbox"] {
+      margin-top: 2px;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+    
+    .form-checkbox label {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      cursor: pointer;
+      flex: 1;
+    }
+    
+    .form-checkbox a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    
     .btn-primary {
       width: 100%;
       padding: 16px;
@@ -162,6 +228,11 @@ const HTML = `<!DOCTYPE html>
     .btn-primary:active {
       transform: scale(0.98);
       opacity: 0.8;
+    }
+    
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
     
     .auth-link {
@@ -192,7 +263,7 @@ const HTML = `<!DOCTYPE html>
     
     .alert-warning {
       background: var(--warning);
-      color: var(--text-primary);
+      color: white;
     }
     
     /* Main App */
@@ -228,21 +299,25 @@ const HTML = `<!DOCTYPE html>
       letter-spacing: -0.5px;
     }
     
-    .theme-toggle {
+    .header-buttons {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .icon-btn {
       width: 40px;
       height: 40px;
       background: var(--bg-elevated);
-      border: none;
+      border: 1px solid var(--separator);
       border-radius: 50%;
       cursor: pointer;
-      font-size: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
       transition: all 0.2s;
     }
     
-    .theme-toggle:active {
+    .icon-btn:active {
       transform: scale(0.9);
     }
     
@@ -272,6 +347,102 @@ const HTML = `<!DOCTYPE html>
     
     .status-dot.error {
       background: var(--destructive);
+    }
+    
+    /* Settings Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    
+    .modal-overlay.active {
+      display: flex;
+    }
+    
+    .modal-content {
+      background: var(--bg-primary);
+      border-radius: 16px 16px 0 0;
+      width: 100%;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding-bottom: env(safe-area-inset-bottom);
+      transform: translateY(100%);
+      transition: transform 0.3s;
+    }
+    
+    .modal-overlay.active .modal-content {
+      transform: translateY(0);
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      border-bottom: 0.5px solid var(--separator);
+    }
+    
+    .modal-title {
+      font-size: 20px;
+      font-weight: 700;
+    }
+    
+    .close-btn {
+      width: 32px;
+      height: 32px;
+      background: var(--bg-secondary);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .modal-body {
+      padding: 20px;
+    }
+    
+    .terms-content {
+      max-height: 400px;
+      overflow-y: auto;
+      padding: 16px;
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.8;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+    
+    .terms-content h3 {
+      color: var(--text-primary);
+      font-size: 15px;
+      margin-top: 16px;
+      margin-bottom: 8px;
+    }
+    
+    .terms-content h3:first-child {
+      margin-top: 0;
+    }
+    
+    .terms-content p {
+      margin-bottom: 12px;
+    }
+    
+    .terms-content ul {
+      margin-left: 20px;
+      margin-bottom: 12px;
+    }
+    
+    .terms-content li {
+      margin-bottom: 6px;
     }
     
     /* Content */
@@ -334,10 +505,6 @@ const HTML = `<!DOCTYPE html>
       gap: 8px;
     }
     
-    .mic-btn .icon {
-      font-size: 24px;
-    }
-    
     .mic-btn:active {
       transform: scale(0.95);
     }
@@ -370,11 +537,13 @@ const HTML = `<!DOCTYPE html>
       background: linear-gradient(135deg, var(--radio-accent) 0%, #ff6b00 100%);
       border: none;
       border-radius: 50%;
-      font-size: 50px;
       cursor: pointer;
       box-shadow: 0 8px 24px rgba(255, 159, 10, 0.3);
       transition: all 0.2s;
       position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     
     .ptt-btn:active {
@@ -483,6 +652,9 @@ const HTML = `<!DOCTYPE html>
       font-size: 15px;
       font-weight: 600;
       color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     
     .setting-value {
@@ -640,7 +812,7 @@ const HTML = `<!DOCTYPE html>
       border-top: 0.5px solid var(--separator);
       padding-bottom: env(safe-area-inset-bottom);
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       z-index: 100;
     }
     
@@ -657,10 +829,6 @@ const HTML = `<!DOCTYPE html>
       font-size: 10px;
       font-weight: 600;
       transition: all 0.2s;
-    }
-    
-    .tab-item .icon {
-      font-size: 24px;
     }
     
     .tab-item.active {
@@ -686,8 +854,19 @@ const HTML = `<!DOCTYPE html>
 <body>
   <!-- Auth Screen -->
   <div id="authScreen">
+    <button class="auth-theme-toggle" id="authThemeToggle">
+      <svg class="icon-small" viewBox="0 0 24 24" id="authThemeIcon">
+        <path d="M9 2c-1.05 0-2.05.16-3 .46 4.06 1.27 7 5.06 7 9.54 0 4.48-2.94 8.27-7 9.54.95.3 1.95.46 3 .46 5.52 0 10-4.48 10-10S14.52 2 9 2z"/>
+      </svg>
+    </button>
+    
     <div class="auth-container">
-      <div class="auth-logo">🎙️</div>
+      <div class="auth-logo">
+        <svg class="icon-large" viewBox="0 0 24 24" style="width: 80px; height: 80px; fill: var(--accent);">
+          <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+          <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+        </svg>
+      </div>
       <h1 class="auth-title">Voice Chat</h1>
       <p class="auth-subtitle">Minecraft ボイスチャット</p>
       
@@ -709,7 +888,7 @@ const HTML = `<!DOCTYPE html>
       
       <div id="registerForm" class="hidden">
         <div class="alert alert-warning" style="display:block">
-          ⚠️ 先にMinecraftサーバーに参加してください
+          先にMinecraftサーバーに参加してください
         </div>
         <div class="form-group">
           <label class="form-label">ユーザー名</label>
@@ -719,7 +898,15 @@ const HTML = `<!DOCTYPE html>
           <label class="form-label">パスワード</label>
           <input type="password" class="form-input" id="registerPassword" autocomplete="new-password" placeholder="パスワード" />
         </div>
-        <button class="btn-primary" id="registerBtn">アカウント作成</button>
+        
+        <div class="form-checkbox">
+          <input type="checkbox" id="agreeTerms" />
+          <label for="agreeTerms">
+            <a href="#" id="showTermsLink">利用規約</a>に同意します
+          </label>
+        </div>
+        
+        <button class="btn-primary" id="registerBtn" disabled>アカウント作成</button>
         <div class="auth-link" id="showLogin">ログインに戻る</div>
       </div>
     </div>
@@ -730,7 +917,13 @@ const HTML = `<!DOCTYPE html>
     <div class="app-header">
       <div class="header-top">
         <h1 class="header-title">Voice Chat</h1>
-        <button class="theme-toggle" id="themeToggle">🌙</button>
+        <div class="header-buttons">
+          <button class="icon-btn" id="settingsBtn" title="設定">
+            <svg class="icon-small" viewBox="0 0 24 24">
+              <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94L14.4 2.81c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+            </svg>
+          </button>
+        </div>
       </div>
       <div class="status-pills">
         <div class="status-pill">
@@ -738,11 +931,15 @@ const HTML = `<!DOCTYPE html>
           <span id="wsStatusText">接続中</span>
         </div>
         <div class="status-pill">
-          <span>⚡</span>
+          <svg class="icon-small" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+            <path d="M13 2.05v3.03c3.39.49 6 3.39 6 6.92 0 .9-.18 1.75-.48 2.54l2.6 1.53c.56-1.24.88-2.62.88-4.07 0-5.18-3.95-9.45-9-9.95zM12 19c-3.87 0-7-3.13-7-7 0-3.53 2.61-6.43 6-6.92V2.05c-5.06.5-9 4.76-9 9.95 0 5.52 4.47 10 9.99 10 3.31 0 6.24-1.61 8.06-4.09l-2.6-1.53C16.17 17.98 14.21 19 12 19z"/>
+          </svg>
           <span id="pingDisplay">-</span>
         </div>
         <div class="status-pill">
-          <span>👤</span>
+          <svg class="icon-small" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+          </svg>
           <span id="currentUsername"></span>
         </div>
       </div>
@@ -753,23 +950,29 @@ const HTML = `<!DOCTYPE html>
       <div id="radioTab" class="tab-content active">
         <div class="card">
           <div class="card-header">
-            <h2 class="card-title">📻 ラジオ</h2>
+            <h2 class="card-title">ラジオ</h2>
           </div>
           
           <div class="mic-grid">
             <button class="mic-btn spatial" id="spatialMicBtn">
-              <span class="icon">🌍</span>
+              <svg class="icon" viewBox="0 0 24 24">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+              </svg>
               <span>空間音声</span>
             </button>
             <button class="mic-btn radio" id="radioMicBtn">
-              <span class="icon">📻</span>
+              <svg class="icon" viewBox="0 0 24 24">
+                <path d="M3.24 6.15C2.51 6.43 2 7.17 2 8v12c0 1.1.89 2 2 2h16c1.11 0 2-.9 2-2V8c0-1.11-.89-2-2-2H8.3l8.26-3.34L15.88 1 3.24 6.15zM7 20c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-8h-2v-2h-2v2H4V8h16v4z"/>
+              </svg>
               <span>ラジオ</span>
             </button>
           </div>
           
           <div class="ptt-container">
             <button class="ptt-btn" id="pttBtn" disabled>
-              <span>📻</span>
+              <svg class="icon-large" viewBox="0 0 24 24" style="fill: white;">
+                <path d="M3.24 6.15C2.51 6.43 2 7.17 2 8v12c0 1.1.89 2 2 2h16c1.11 0 2-.9 2-2V8c0-1.11-.89-2-2-2H8.3l8.26-3.34L15.88 1 3.24 6.15zM7 20c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-8h-2v-2h-2v2H4V8h16v4z"/>
+              </svg>
             </button>
             <div class="ptt-label" id="pttLabel">ラジオマイクをON</div>
           </div>
@@ -818,17 +1021,46 @@ const HTML = `<!DOCTYPE html>
           <div id="playersList"></div>
         </div>
       </div>
-      
-      <!-- Settings Tab -->
-      <div id="settingsTab" class="tab-content">
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">音声設定</h2>
+    </div>
+    
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title">設定</h2>
+          <button class="close-btn" id="closeSettingsBtn">
+            <svg class="icon-small" viewBox="0 0 24 24">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="setting-item">
+            <div class="setting-label">
+              <div class="setting-title">
+                <svg class="icon-small" viewBox="0 0 24 24">
+                  <path d="M7 10l5 5 5-5z"/>
+                </svg>
+                <span>テーマ</span>
+              </div>
+            </div>
+            <div class="toggle-row">
+              <span>ダークモード</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="darkModeToggle">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
           </div>
           
           <div class="setting-item">
             <div class="setting-label">
-              <span class="setting-title">🔊 全体音量</span>
+              <div class="setting-title">
+                <svg class="icon-small" viewBox="0 0 24 24">
+                  <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+                </svg>
+                <span>全体音量</span>
+              </div>
               <span class="setting-value"><span id="masterVolumeValue">100</span>%</span>
             </div>
             <input type="range" class="slider" id="masterVolumeSlider" min="0" max="100" value="100" step="5" />
@@ -836,7 +1068,12 @@ const HTML = `<!DOCTYPE html>
           
           <div class="setting-item">
             <div class="setting-label">
-              <span class="setting-title">📢 最大聴取距離</span>
+              <div class="setting-title">
+                <svg class="icon-small" viewBox="0 0 24 24">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                </svg>
+                <span>伝える最大距離</span>
+              </div>
               <span class="setting-value"><span id="maxDistanceValue">50</span>m</span>
             </div>
             <input type="range" class="slider" id="maxDistanceSlider" min="10" max="200" value="50" step="10" />
@@ -844,17 +1081,100 @@ const HTML = `<!DOCTYPE html>
           
           <div class="setting-item">
             <div class="setting-label">
-              <span class="setting-title">🎯 最小距離</span>
+              <div class="setting-title">
+                <svg class="icon-small" viewBox="0 0 24 24">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                </svg>
+                <span>伝える最小距離</span>
+              </div>
               <span class="setting-value"><span id="minDistanceValue">5</span>m</span>
             </div>
             <input type="range" class="slider" id="minDistanceSlider" min="1" max="20" value="5" step="1" />
           </div>
+          
+          <div class="card" style="margin-top: 20px;">
+            <button class="btn-primary" id="logoutBtn" style="background:var(--destructive);margin:0">
+              ログアウト
+            </button>
+          </div>
         </div>
-        
-        <div class="card">
-          <button class="btn-primary" id="logoutBtn" style="background:var(--destructive);margin:0">
-            ログアウト
+      </div>
+    </div>
+    
+    <!-- Terms Modal -->
+    <div class="modal-overlay" id="termsModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title">利用規約</h2>
+          <button class="close-btn" id="closeTermsBtn">
+            <svg class="icon-small" viewBox="0 0 24 24">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
           </button>
+        </div>
+        <div class="modal-body">
+          <div class="terms-content">
+            <h3>第1条（適用）</h3>
+            <p>本利用規約（以下「本規約」）は、本サービスの提供条件および本サービスの利用に関する当サービス運営者とユーザーとの間の権利義務関係を定めることを目的とし、ユーザーと当サービス運営者との間の本サービスの利用に関わる一切の関係に適用されます。</p>
+            
+            <h3>第2条（定義）</h3>
+            <p>本規約において使用する用語の定義は、以下のとおりとします。</p>
+            <ul>
+              <li>「本サービス」とは、Minecraftサーバー用音声チャットサービスを意味します。</li>
+              <li>「ユーザー」とは、本サービスを利用する個人を意味します。</li>
+              <li>「アカウント」とは、本サービスの利用のために作成されるユーザー固有の識別情報を意味します。</li>
+            </ul>
+            
+            <h3>第3条（利用登録）</h3>
+            <p>本サービスの利用を希望する者は、本規約に同意の上、登録を行うものとします。利用登録は、登録申請者がユーザー名とパスワードを入力し、本規約への同意を確認することにより完了します。</p>
+            
+            <h3>第4条（アカウント管理）</h3>
+            <p>ユーザーは、自己の責任において、本サービスのアカウント情報を管理するものとします。ユーザーは、いかなる場合にも、アカウントを第三者に譲渡または貸与することはできません。</p>
+            
+            <h3>第5条（禁止事項）</h3>
+            <p>ユーザーは、本サービスの利用にあたり、以下の行為をしてはなりません。</p>
+            <ul>
+              <li>法令または公序良俗に違反する行為</li>
+              <li>犯罪行為に関連する行為</li>
+              <li>他のユーザーまたは第三者の知的財産権、肖像権、プライバシー、名誉その他の権利または利益を侵害する行為</li>
+              <li>本サービスのネットワークまたはシステム等に過度な負荷をかける行為</li>
+              <li>本サービスの運営を妨害するおそれのある行為</li>
+              <li>不正アクセスをし、またはこれを試みる行為</li>
+              <li>他のユーザーに関する個人情報等を収集または蓄積する行為</li>
+              <li>他のユーザーに成りすます行為</li>
+              <li>反社会的勢力に対して直接または間接に利益を供与する行為</li>
+              <li>その他、当サービス運営者が不適切と判断する行為</li>
+            </ul>
+            
+            <h3>第6条（個人情報の取扱い）</h3>
+            <p>当サービス運営者は、本サービスの利用によって取得する個人情報については、適切に取り扱うものとします。本サービスでは、以下の情報を取得します。</p>
+            <ul>
+              <li>ユーザー名</li>
+              <li>パスワード（暗号化して保存）</li>
+              <li>Minecraft内のプレイヤー位置情報</li>
+              <li>音声通話のメタデータ</li>
+            </ul>
+            
+            <h3>第7条（サービスの停止等）</h3>
+            <p>当サービス運営者は、以下のいずれかの事由があると判断した場合、ユーザーに事前に通知することなく本サービスの全部または一部の提供を停止または中断することができるものとします。</p>
+            <ul>
+              <li>本サービスにかかるシステムの保守点検または更新を行う場合</li>
+              <li>地震、落雷、火災、停電または天災などの不可抗力により、本サービスの提供が困難となった場合</li>
+              <li>その他、当サービス運営者が本サービスの提供が困難と判断した場合</li>
+            </ul>
+            
+            <h3>第8条（免責事項）</h3>
+            <p>当サービス運営者は、本サービスに関して、ユーザーと他のユーザーまたは第三者との間において生じた取引、連絡または紛争等について一切責任を負いません。</p>
+            <p>本サービスは現状有姿で提供されるものであり、当サービス運営者は本サービスについて、特定の目的への適合性、商業的有用性、完全性、継続性等を含め、一切保証いたしません。</p>
+            
+            <h3>第9条（利用規約の変更）</h3>
+            <p>当サービス運営者は、必要と判断した場合には、ユーザーに通知することなくいつでも本規約を変更することができるものとします。</p>
+            
+            <h3>第10条（準拠法・裁判管轄）</h3>
+            <p>本規約の解釈にあたっては、日本法を準拠法とします。本サービスに関して紛争が生じた場合には、当サービス運営者の所在地を管轄する裁判所を専属的合意管轄とします。</p>
+            
+            <p style="margin-top: 20px; text-align: right;">制定日: 2025年1月1日</p>
+          </div>
         </div>
       </div>
     </div>
@@ -862,26 +1182,26 @@ const HTML = `<!DOCTYPE html>
     <!-- Bottom Tab Bar -->
     <div class="tab-bar">
       <button class="tab-item active" data-tab="radioTab">
-        <span class="icon">📻</span>
+        <svg class="icon" viewBox="0 0 24 24">
+          <path d="M3.24 6.15C2.51 6.43 2 7.17 2 8v12c0 1.1.89 2 2 2h16c1.11 0 2-.9 2-2V8c0-1.11-.89-2-2-2H8.3l8.26-3.34L15.88 1 3.24 6.15zM7 20c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-8h-2v-2h-2v2H4V8h16v4z"/>
+        </svg>
         <span>ラジオ</span>
       </button>
       <button class="tab-item" data-tab="playersTab">
-        <span class="icon">👥</span>
+        <svg class="icon" viewBox="0 0 24 24">
+          <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+        </svg>
         <span>プレイヤー</span>
-      </button>
-      <button class="tab-item" data-tab="settingsTab">
-        <span class="icon">⚙️</span>
-        <span>設定</span>
       </button>
     </div>
   </div>
   
   <script src="/app.js"></script>
 </body>
-</html>`
+</html>\`
 
-const VOICE_JS = `
-console.log('🎙️ Voice Chat System - Final Production Version');
+const VOICE_JS = \`
+console.log('Voice Chat System - Fixed Audio Version');
 const API_URL='https://mc-voice-relay.nemu1.workers.dev';
 const WS_URL='wss://mc-voice-relay.nemu1.workers.dev/ws';
 
@@ -896,25 +1216,80 @@ let pingInterval=null,lastPingTime=0;
 let maxDistance=50,minDistance=5,masterVolume=1.0;
 let micStatusMap=new Map(),radioMicStatusMap=new Map();
 let micLinkEnabled=false;
-let isDarkMode=true;
+let isDarkMode=false;
+let testAudioElements=new Map(); // For audio playback testing
 
-// Theme Toggle
-function toggleTheme(){
-  isDarkMode=!isDarkMode;
-  document.body.classList.toggle('light-mode',!isDarkMode);
-  document.getElementById('themeToggle').textContent=isDarkMode?'🌙':'☀️';
-  localStorage.setItem('theme',isDarkMode?'dark':'light');
-}
-
-// Load saved theme
+// Auth Theme Toggle
 const savedTheme=localStorage.getItem('theme');
-if(savedTheme==='light'){
-  isDarkMode=false;
-  document.body.classList.add('light-mode');
-  document.getElementById('themeToggle').textContent='☀️';
+if(savedTheme==='dark'){
+  isDarkMode=true;
+  document.body.classList.add('dark-mode');
 }
 
-document.getElementById('themeToggle').addEventListener('click',toggleTheme);
+function updateAuthThemeIcon(){
+  const icon=document.getElementById('authThemeIcon');
+  if(isDarkMode){
+    icon.innerHTML='<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"/>';
+  }else{
+    icon.innerHTML='<path d="M9 2c-1.05 0-2.05.16-3 .46 4.06 1.27 7 5.06 7 9.54 0 4.48-2.94 8.27-7 9.54.95.3 1.95.46 3 .46 5.52 0 10-4.48 10-10S14.52 2 9 2z"/>';
+  }
+}
+
+updateAuthThemeIcon();
+
+document.getElementById('authThemeToggle').addEventListener('click',()=>{
+  isDarkMode=!isDarkMode;
+  document.body.classList.toggle('dark-mode',isDarkMode);
+  localStorage.setItem('theme',isDarkMode?'dark':'light');
+  updateAuthThemeIcon();
+});
+
+// Terms Modal
+document.getElementById('showTermsLink').addEventListener('click',e=>{
+  e.preventDefault();
+  document.getElementById('termsModal').classList.add('active');
+});
+
+document.getElementById('closeTermsBtn').addEventListener('click',()=>{
+  document.getElementById('termsModal').classList.remove('active');
+});
+
+document.getElementById('termsModal').addEventListener('click',e=>{
+  if(e.target.id==='termsModal'){
+    document.getElementById('termsModal').classList.remove('active');
+  }
+});
+
+// Terms Agreement
+document.getElementById('agreeTerms').addEventListener('change',e=>{
+  document.getElementById('registerBtn').disabled=!e.target.checked;
+});
+
+// Settings Modal
+document.getElementById('settingsBtn').addEventListener('click',()=>{
+  document.getElementById('settingsModal').classList.add('active');
+});
+
+document.getElementById('closeSettingsBtn').addEventListener('click',()=>{
+  document.getElementById('settingsModal').classList.remove('active');
+});
+
+document.getElementById('settingsModal').addEventListener('click',e=>{
+  if(e.target.id==='settingsModal'){
+    document.getElementById('settingsModal').classList.remove('active');
+  }
+});
+
+// Dark Mode Toggle (Main App)
+if(savedTheme==='dark'){
+  document.getElementById('darkModeToggle').checked=true;
+}
+
+document.getElementById('darkModeToggle').addEventListener('change',e=>{
+  isDarkMode=e.target.checked;
+  document.body.classList.toggle('dark-mode',isDarkMode);
+  localStorage.setItem('theme',isDarkMode?'dark':'light');
+});
 
 // Tab Navigation
 document.querySelectorAll('.tab-item').forEach(btn=>{
@@ -938,9 +1313,16 @@ function initAudio(){
     analyserNode=audioContext.createAnalyser();
     analyserNode.fftSize=256;
     createNoiseBuffer();
-    console.log('✅ Audio initialized');
+    console.log('Audio initialized');
+    
+    // Resume audio context on user interaction
+    if(audioContext.state==='suspended'){
+      audioContext.resume().then(()=>{
+        console.log('Audio context resumed');
+      });
+    }
   }catch(err){
-    console.error('❌ Audio init:',err);
+    console.error('Audio init:',err);
   }
 }
 
@@ -954,13 +1336,19 @@ function createNoiseBuffer(){
 function playBeep(freq=800,dur=100){
   if(!audioContext)return;
   try{
+    // Resume audio context if suspended
+    if(audioContext.state==='suspended'){
+      audioContext.resume();
+    }
     const osc=audioContext.createOscillator(),gain=audioContext.createGain();
     osc.type='sine';osc.frequency.value=freq;
     gain.gain.setValueAtTime(0.3,audioContext.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01,audioContext.currentTime+dur/1000);
     osc.connect(gain);gain.connect(audioContext.destination);
     osc.start(audioContext.currentTime);osc.stop(audioContext.currentTime+dur/1000);
-  }catch(err){}
+  }catch(err){
+    console.error('Beep error:',err);
+  }
 }
 
 function playPTTBeep(on){
@@ -968,9 +1356,17 @@ function playPTTBeep(on){
   else{playBeep(1200,50);setTimeout(()=>playBeep(1000,50),60)}
 }
 
+// FIXED: Setup player audio with proper stream handling
 function setupPlayerAudio(xid,stream){
   if(!audioContext)return;
   try{
+    console.log('Setting up audio for player:',xid);
+    
+    // Resume audio context if suspended
+    if(audioContext.state==='suspended'){
+      audioContext.resume();
+    }
+    
     const source=audioContext.createMediaStreamSource(stream);
     const spatialGain=audioContext.createGain();
     const spatialPanner=audioContext.createPanner();
@@ -1018,8 +1414,30 @@ function setupPlayerAudio(xid,stream){
     analyserNodes.set(xid,analyser);
     radioEffectNodes.set(xid,{radioHighpass,radioLowpass,noiseGain,noiseSource});
     
-    console.log(\`🔊 Audio: \${xid}\`);
-  }catch(err){console.error('Audio setup:',err)}
+    console.log('Audio setup complete for:',xid);
+  }catch(err){
+    console.error('Audio setup error:',err);
+  }
+}
+
+// FIXED: Test audio playback
+function testAudioPlayback(xid){
+  // Create test tone to verify audio is working
+  if(!audioContext)return;
+  try{
+    console.log('Testing audio for:',xid);
+    const testOsc=audioContext.createOscillator();
+    const testGain=audioContext.createGain();
+    testOsc.frequency.value=440;
+    testGain.gain.value=0.1;
+    testOsc.connect(testGain);
+    testGain.connect(audioContext.destination);
+    testOsc.start();
+    testOsc.stop(audioContext.currentTime+0.5);
+    console.log('Test tone played for:',xid);
+  }catch(err){
+    console.error('Test audio error:',err);
+  }
 }
 
 function updateSpatialAudio(){
@@ -1092,12 +1510,14 @@ function updatePlayersList(){
         realVol=Math.min(1,avg/255);
       }catch(err){}
     }
-    const icon=p.isRadio?'📻':'🌍';
+    const iconSvg=p.isRadio
+      ?'<svg class="icon-small" viewBox="0 0 24 24" style="fill: var(--radio-accent);"><path d="M3.24 6.15C2.51 6.43 2 7.17 2 8v12c0 1.1.89 2 2 2h16c1.11 0 2-.9 2-2V8c0-1.11-.89-2-2-2H8.3l8.26-3.34L15.88 1 3.24 6.15zM7 20c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-8h-2v-2h-2v2H4V8h16v4z"/></svg>'
+      :'<svg class="icon-small" viewBox="0 0 24 24" style="fill: var(--spatial-accent);"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>';
     return \`
       <div class="player-item">
         <div class="player-info">
           <div class="player-name">
-            <span>\${icon}</span>
+            \${iconSvg}
             <span>\${p.name}</span>
           </div>
           <div class="player-distance">\${p.dist}m</div>
@@ -1111,13 +1531,23 @@ function updatePlayersList(){
 }
 
 async function getMicrophone(){
-  console.log('🎤 Requesting microphone...');
+  console.log('Requesting microphone...');
   try{
     localStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,sampleRate:48000}});
-    console.log('✅ Mic granted');
+    console.log('Mic granted');
+    
+    // Test audio context
+    if(audioContext){
+      console.log('Audio context state:',audioContext.state);
+      if(audioContext.state==='suspended'){
+        await audioContext.resume();
+        console.log('Audio context resumed');
+      }
+    }
+    
     return true;
   }catch(err){
-    console.error('❌ Mic:',err.name,err.message);
+    console.error('Mic:',err.name,err.message);
     alert('マイクアクセスエラー: '+err.message);
     return false;
   }
@@ -1131,10 +1561,12 @@ async function toggleSpatialMic(){
     btn.classList.add('active');
     micStatusMap.set(currentUser.xid,true);
     broadcastMicStatus('spatial',true);
+    console.log('Spatial mic ON');
   }else{
     btn.classList.remove('active');
     micStatusMap.set(currentUser.xid,false);
     broadcastMicStatus('spatial',false);
+    console.log('Spatial mic OFF');
   }
 }
 
@@ -1152,6 +1584,7 @@ async function toggleRadioMic(){
     radioMicStatusMap.set(currentUser.xid,true);
     broadcastMicStatus('radio',true);
     if(micLinkEnabled&&spatialMicEnabled)toggleSpatialMic();
+    console.log('Radio mic ON');
   }else{
     btn.classList.remove('active');
     if(pttBtn)pttBtn.disabled=true;
@@ -1160,6 +1593,7 @@ async function toggleRadioMic(){
     radioMicStatusMap.set(currentUser.xid,false);
     broadcastMicStatus('radio',false);
     if(micLinkEnabled&&!spatialMicEnabled)toggleSpatialMic();
+    console.log('Radio mic OFF');
   }
 }
 
@@ -1178,7 +1612,7 @@ async function startPTT(){
   document.getElementById('pttLabel').textContent='送信中...';
   playPTTBeep(true);
   broadcastPTTStatus(true);
-  console.log('🎙️ PTT: ON');
+  console.log('PTT: ON');
 }
 
 function stopPTT(){
@@ -1188,7 +1622,7 @@ function stopPTT(){
   document.getElementById('pttLabel').textContent='長押しで送信';
   playPTTBeep(false);
   broadcastPTTStatus(false);
-  console.log('🎙️ PTT: OFF');
+  console.log('PTT: OFF');
 }
 
 function broadcastPTTStatus(status){
@@ -1198,11 +1632,11 @@ function broadcastPTTStatus(status){
 }
 
 function connectWebSocket(){
-  console.log('🌐 Connecting WebSocket...');
+  console.log('Connecting WebSocket...');
   ws=new WebSocket(WS_URL+'?xid='+encodeURIComponent(currentUser.xid));
-  ws.onopen=()=>{console.log('✅ WS connected');updateWSStatus(true);startPing()};
-  ws.onclose=()=>{console.log('🔴 WS closed');updateWSStatus(false);stopPing();setTimeout(connectWebSocket,5000)};
-  ws.onerror=err=>console.error('❌ WS:',err);
+  ws.onopen=()=>{console.log('WS connected');updateWSStatus(true);startPing()};
+  ws.onclose=()=>{console.log('WS closed');updateWSStatus(false);stopPing();setTimeout(connectWebSocket,5000)};
+  ws.onerror=err=>console.error('WS:',err);
   ws.onmessage=e=>{
     try{
       const data=JSON.parse(e.data);
@@ -1273,7 +1707,11 @@ document.getElementById('showLogin').addEventListener('click',()=>{
 document.getElementById('registerBtn').addEventListener('click',async()=>{
   const username=document.getElementById('registerUsername').value.trim();
   const password=document.getElementById('registerPassword').value;
+  const agreed=document.getElementById('agreeTerms').checked;
+  
   if(!username||!password){alert('全て入力してください');return}
+  if(!agreed){alert('利用規約に同意してください');return}
+  
   try{
     const res=await fetch(API_URL+'/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
     const data=await res.json();
@@ -1306,7 +1744,13 @@ document.getElementById('loginBtn').addEventListener('click',async()=>{
       connectWebSocket();
       checkRadioChannel();
       setInterval(updatePlayersList,100);
-      console.log('✅ Login');
+      console.log('Login successful');
+      
+      // Play test beep to verify audio
+      setTimeout(()=>{
+        playBeep(440,200);
+        console.log('Audio test beep played');
+      },500);
     }else{
       document.getElementById('authError').textContent=data.error;
       document.getElementById('authError').style.display='block';
@@ -1364,7 +1808,7 @@ document.getElementById('joinRadioBtn').addEventListener('click',async()=>{
       const pttLabel=document.getElementById('pttLabel');
       if(pttLabel&&radioMicEnabled)pttLabel.textContent='長押しで送信';
       if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'radio_update'}));
-      console.log('✅ Joined:',channel);
+      console.log('Joined:',channel);
     }
   }catch(err){console.error('Radio join:',err)}
 });
@@ -1424,5 +1868,5 @@ document.getElementById('logoutBtn').addEventListener('click',()=>{
   }
 });
 
-console.log('✅ Voice Chat System Ready');
-`
+console.log('Voice Chat System Ready');
+\`
