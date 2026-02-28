@@ -18,7 +18,7 @@ export default {
   }
 }
 
-const HTML = \`<!DOCTYPE html>
+const HTML = `<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
@@ -1869,4 +1869,4 @@ document.getElementById('logoutBtn').addEventListener('click',()=>{
 });
 
 console.log('Voice Chat System Ready');
-\`
+`
