@@ -1198,9 +1198,9 @@ const HTML = `<!DOCTYPE html>
   
   <script src="/app.js"></script>
 </body>
-</html>\`
+</html>`
 
-const VOICE_JS = \`
+const VOICE_JS = `
 console.log('Voice Chat System - Fixed Audio Version');
 const API_URL='https://mc-voice-relay.nemu1.workers.dev';
 const WS_URL='wss://mc-voice-relay.nemu1.workers.dev/ws';
